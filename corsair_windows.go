@@ -285,6 +285,7 @@ func (c *Corsair) frame(cfg Config, src thumbSource, alpha float64) {
 		if !ok {
 			continue
 		}
+		cfg := cfg.forDevice(d.name)
 		whole := adjust(regionColor(t, 0, t.W, cfg.Vivid), cfg.Saturation, cfg.Brightness)
 		if len(d.state) != len(d.leds) {
 			d.state = make([]rgb, len(d.leds))

@@ -214,19 +214,33 @@ func (a *trayApp) setStatus(s Status) {
 // deviceSlot is one entry of the "Región por dispositivo" submenu.
 type deviceSlot struct {
 	item, choose, reset *systray.MenuItem
+	color, follow       *systray.MenuItem
 	name                string // device currently shown in this slot
 }
 
 const maxDeviceSlots = 24
 
 func (a *trayApp) buildDeviceMenu() {
-	a.mDevices = systray.AddMenuItem("Región por dispositivo", "Cada dispositivo puede seguir su propia zona de la pantalla")
+	a.mDevices = systray.AddMenuItem("Dispositivos", "Región o color fijo de cada dispositivo")
 	for i := 0; i < maxDeviceSlots; i++ {
 		s := &deviceSlot{item: a.mDevices.AddSubMenuItem("", "")}
 		s.choose = s.item.AddSubMenuItem("Elegir región…", "")
 		s.reset = s.item.AddSubMenuItem("Usar la región general", "")
+		s.color = s.item.AddSubMenuItem("Color fijo…", "Un color sólido en lugar de seguir la pantalla")
+		s.follow = s.item.AddSubMenuItem("Seguir la pantalla", "Quita el color fijo")
 		s.item.Hide()
 		a.slots = append(a.slots, s)
+		go a.onClick(s.color, func() {
+			if name := a.slotName(s); name != "" {
+				a.pickColorFor(name)
+			}
+		})
+		go a.onClick(s.follow, func() {
+			if name := a.slotName(s); name != "" {
+				a.engine.Update(func(c *Config) { delete(c.DeviceColors, name) })
+				a.refreshDeviceMenu()
+			}
+		})
 		go a.onClick(s.choose, func() {
 			if name := a.slotName(s); name != "" {
 				a.selectRegionFor(name)
@@ -268,6 +282,7 @@ func (a *trayApp) refreshDeviceMenu() {
 		}
 		name := snap.Devices[i].Name
 		title := name
+		_, fixed := cfg.fixedColor(name)
 		if r, ok := cfg.DeviceRegions[name]; ok {
 			title = fmt.Sprintf("%s  — región propia %d×%d", name, r.W, r.H)
 			s.reset.Enable()
@@ -275,10 +290,36 @@ func (a *trayApp) refreshDeviceMenu() {
 			title = name + "  — región general"
 			s.reset.Disable()
 		}
+		if fixed {
+			title = fmt.Sprintf("%s  — color fijo %s", name, cfg.DeviceColors[name])
+			s.follow.Enable()
+		} else {
+			s.follow.Disable()
+		}
 		s.name = name
 		s.item.SetTitle(title)
 		s.item.Show()
 	}
+}
+
+// pickColorFor pins a device to a color chosen in the Windows color dialog.
+func (a *trayApp) pickColorFor(device string) {
+	start, ok := a.engine.Config().fixedColor(device)
+	if !ok {
+		start = rgb{255, 255, 255}
+	}
+	c, ok := PickColor(start)
+	if !ok {
+		return
+	}
+	a.engine.Update(func(cfg *Config) {
+		if cfg.DeviceColors == nil {
+			cfg.DeviceColors = map[string]string{}
+		}
+		cfg.DeviceColors[device] = hexColor(c)
+	})
+	log.Printf("color fijo %q: %s", device, hexColor(c))
+	a.refreshDeviceMenu()
 }
 
 func (a *trayApp) selectRegion() { a.selectRegionFor("") }

@@ -72,7 +72,7 @@ Menú del ícono de la bandeja:
 |---|---|
 | Seleccionar región… | Vuelve a elegir la zona (funciona en cualquier monitor) |
 | Usar pantalla principal completa | Olvida la región elegida |
-| Región por dispositivo | Cada dispositivo (placa/ventiladores, ratón…) puede seguir su propia zona: *Elegir región…* o *Usar la región general* |
+| Dispositivos | Para cada dispositivo (placa/ventiladores, ratón, teclado…): *Elegir región…* / *Usar la región general*, o *Color fijo…* (selector de color de Windows) / *Seguir la pantalla* |
 | Pausar | Deja de actualizar las luces |
 | Colores vivos | Da más peso a los píxeles con color que a los grises/negros |
 | Degradado por LED | Reparte la región de izquierda a derecha entre los LEDs de cada dispositivo, en lugar de un único color |
@@ -122,6 +122,7 @@ luego *Recargar configuración*):
 }
 ```
 
+- `device_colors`: color fijo por dispositivo, por ejemplo `{"BCORNE": "#FF0080"}`.
 - `devices`: controla solo los dispositivos cuyo nombre contenga alguno de estos
   textos (sin importar mayúsculas). Si lo dejas vacío, controla todos.
 - `saturation`: 1 deja el color tal cual; 1.3–1.6 suele verse mejor en LEDs.

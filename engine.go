@@ -65,6 +65,7 @@ func (e *Engine) Config() Config {
 	c := e.cfg
 	c.Devices = append([]string(nil), c.Devices...)
 	c.DeviceRegions = maps.Clone(c.DeviceRegions)
+	c.DeviceColors = maps.Clone(c.DeviceColors)
 	c.ZoneSizes = maps.Clone(c.ZoneSizes)
 	return c
 }
@@ -145,6 +146,19 @@ func (e *Engine) captureSource(capt *Capturer, cfg Config) thumbSource {
 	}
 }
 
+// withFixedColors makes devices with a pinned color see a solid image of it.
+func withFixedColors(src thumbSource, cfg Config) thumbSource {
+	if len(cfg.DeviceColors) == 0 {
+		return src
+	}
+	return func(device string) (Thumb, bool) {
+		if c, ok := cfg.fixedColor(device); ok && device != "" {
+			return solidThumb(c), true
+		}
+		return src(device)
+	}
+}
+
 // Run blocks until ctx is cancelled.
 func (e *Engine) Run(ctx context.Context) {
 	capt, err := NewCapturer(thumbW, thumbH)
@@ -213,6 +227,7 @@ func (e *Engine) Run(ctx context.Context) {
 			if _, ok := src(""); !ok {
 				continue // e.g. secure desktop (UAC/lock screen) is showing
 			}
+			src = withFixedColors(src, cfg)
 		}
 		e.cue.Load().frame(cfg, src, smoothAlpha(cfg, dt))
 		e.kb.Load().frame(cfg, src, smoothAlpha(cfg, dt))
@@ -355,6 +370,7 @@ func (e *Engine) frame(cfg Config, src thumbSource, dt time.Duration) error {
 		if !ok {
 			continue
 		}
+		cfg := cfg.forDevice(d.Name)
 		target := ledColors(t, d.NumLEDs, cfg.Spread, cfg.Vivid)
 		for i := range target {
 			target[i] = adjust(target[i], cfg.Saturation, cfg.Brightness)
@@ -445,6 +461,9 @@ func (e *Engine) Snapshot() Snapshot {
 		s.Devices[i].Region = "Región general"
 		if r, ok := cfg.DeviceRegions[s.Devices[i].Name]; ok {
 			s.Devices[i].Region = fmt.Sprintf("Región propia %d×%d en (%d, %d)", r.W, r.H, r.X, r.Y)
+		}
+		if _, ok := cfg.fixedColor(s.Devices[i].Name); ok {
+			s.Devices[i].Region = "Color fijo " + cfg.DeviceColors[s.Devices[i].Name]
 		}
 	}
 	return s

@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Region is a screen rectangle in virtual-screen pixels.
@@ -32,6 +34,9 @@ type Config struct {
 	// DeviceRegions gives a device its own region, keyed by the device name
 	// shown in the app. Devices not listed use Region.
 	DeviceRegions map[string]Region `json:"device_regions,omitempty"`
+	// DeviceColors pins a device to a fixed color ("#RRGGBB") instead of
+	// mirroring the screen, keyed by device name.
+	DeviceColors map[string]string `json:"device_colors,omitempty"`
 	// FPS is how many times per second the screen is sampled.
 	FPS int `json:"fps"`
 	// SmoothingMs is the fade time constant; 0 = instant changes.
@@ -138,4 +143,34 @@ func saveConfig(c Config) error {
 		return err
 	}
 	return os.Rename(tmp, configPath())
+}
+
+// fixedColor returns the device's pinned color, if it has a valid one.
+func (c Config) fixedColor(device string) (rgb, bool) {
+	hex, ok := c.DeviceColors[device]
+	if !ok {
+		return rgb{}, false
+	}
+	return parseHexColor(hex)
+}
+
+func parseHexColor(s string) (rgb, bool) {
+	var r, g, b uint8
+	if n, err := fmt.Sscanf(strings.TrimPrefix(s, "#"), "%02x%02x%02x", &r, &g, &b); err != nil || n != 3 {
+		return rgb{}, false
+	}
+	return rgb{float64(r), float64(g), float64(b)}, true
+}
+
+func hexColor(c rgb) string {
+	return fmt.Sprintf("#%02X%02X%02X", uint8(c.R), uint8(c.G), uint8(c.B))
+}
+
+// forDevice returns the settings to use for one device: a fixed color is
+// shown as-is (only brightness applies), never boosted or spread.
+func (c Config) forDevice(device string) Config {
+	if _, ok := c.fixedColor(device); ok {
+		c.Saturation, c.Vivid, c.Spread = 1, false, false
+	}
+	return c
 }

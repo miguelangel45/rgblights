@@ -196,6 +196,7 @@ func (k *Keyboards) frame(cfg Config, src thumbSource, alpha float64) {
 }
 
 func (kb *vialKeyboard) frame(cfg Config, src thumbSource, alpha float64) error {
+	cfg = cfg.forDevice(kb.name)
 	t, ok := src(kb.name)
 	if !ok {
 		return nil
