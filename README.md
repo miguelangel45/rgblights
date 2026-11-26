@@ -133,3 +133,7 @@ El registro queda en `%APPDATA%\rgblights\rgblights.log`.
 - La captura usa GDI. Los juegos en **pantalla completa exclusiva** pueden
   salir negros; usa el modo *ventana sin bordes*.
 - Mientras se muestra UAC o la pantalla de bloqueo, las luces conservan el último color.
+
+## Licencia
+
+[MIT](LICENSE).
